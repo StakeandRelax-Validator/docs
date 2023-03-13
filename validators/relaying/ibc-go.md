@@ -6,6 +6,8 @@ coverY: 0
 
 # IBC-GO (or RLY)
 
+{% hint style="info" %} Official IBC-GO Relayer GitHub repo: https://github.com/cosmos/relayer {% endhint %}
+
 ## Assumptions
 
 One of the main advantages of Relayer (known as rly that is the implementation of ibc-go libraries) VS Hermes is that rly needs only RPC nodes to work well, instead of RPC, gRPC and RPC Web. This makes it very interesting if you don't have your own node up and running for a specific chain but you want to help relay packets versus that chain and can't find reliable gRPCs. Despite this advantage, rly can work with your own local/remote nodes to improve further his relay performance. Remember that relaying works in a first-come-first-served way, so using remote RPCs or public overloaded RPCs with high latencies will make you relaying slower than other relayers, and relying on public RPC (nodes not monitored by you) gives always a higher level of uncertainty.
