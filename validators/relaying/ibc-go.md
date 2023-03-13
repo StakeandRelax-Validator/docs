@@ -4,7 +4,7 @@ cover: ../.gitbook/assets/Discord Invite (1) (1) (1) (6).png
 coverY: 0
 ---
 
-# Relaying
+# IBC-GO (or RLY)
 
 ## Assumptions
 
