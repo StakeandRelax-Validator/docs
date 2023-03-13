@@ -200,7 +200,7 @@ list = [
 derivation = 'cosmos'
 ```
 
-As you can see, hermes had retrieve the chains configurations, and it has populated also the channels between these 2 chains.
+As you can see, hermes retrieved the chains configurations, and it has populated also the channels between these 2 chains.
 
 {% hint style="warning" %}
 BEWARE: Every time you run the ```hermes config auto``` command it will WIPE the config file in input and rewrite it with chain-registry data. This mean that you will lose any changes, like REST or Telemetry non standard configuration, RPCs and gRPCs configuration (if you are using your owns or trust some specific public RPCs/gRPCs) and every other parameter changed on the chains.
@@ -222,25 +222,29 @@ We setup the wallets by creating key configuration files that will be imported t
 }
 ```
 
-You can manually populate the values once the wallet had been created from Keplr for example (and token received for public key to be visible in explorers), or if you have your own CLI configured for the relative chain, you can use (for example with juno):
+You can manually populate the values once the wallet had been created from Keplr for example (and token received for public key to be visible in explorers). 
+If you have your own CLI configured for the relative chain, you can use this command to have the json output you need (for example with juno):
 
 ```bash
-junod keys add <key_name> --output json
+junod keys add juno-relayer --output json
 ```
 
-and this will output the needed json file.
-
-Assuming that you have saved the juno-relayer wallet information in juno.json file, you can run this command to add it to hermes and then delete it
+Assuming that you have saved the juno-relayer wallet information in juno.json file, you can run this command to add it to hermes
 
 ```bash
 hermes keys add --key-name juno-relayer --chain juno-1 --key-file ./juno.json
-shred -u ./juno.json
 ```
 
-If you want to make sure the keys got imported, you can check them with following command (smart thing to run it before shredding the json file):
+If you want to make sure the keys got imported, you can check them with following command
 
 ```bash
 bin/hermes keys list juno-1
+```
+
+If all is fine then shred it
+
+```bash
+shred -u ./juno.json
 ```
 
 You must import a wallet for every chain you relay.
