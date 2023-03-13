@@ -10,15 +10,16 @@ coverY: 0
 
 ## Assumptions
 
-We assume that you already have access to Juno, Osmosis nodes. These can be either local nodes, or you can access them over the network. However, for networked version, you will need to adjust the systemd configuration not to depend on the chains that are run on other servers. And naturally the hermes configuration needs to adjust the addressing of each chain as well.
+This guide is and example of configuration for Juno<->Osmosis relaying.
+We assume that you already have access to Juno and Osmosis nodes. These can be either local nodes, or you can access them over the network. However, for networked version, you will need to adjust the systemd configuration not to depend on the chains that are run on other servers. And naturally the hermes configuration needs to adjust the addressing of each chain as well.
 
 In these instructions, Hermes is installed under /srv/hermes, adjust the paths according to your setup.
 
-These instructions are based on installation on Debian 10, but should work the same on Debian 11 or recent Ubuntu.
+These instructions are based on installation on Ubuntu 20.04 LTS, but should work the same on Ubuntu 22.04 or recent Debian.
 
 You will need **rust**, **build-essential** and **git** installed to follow these instructions.
 
-## Building Hermes
+## Prerequisites
 
 Install Prerequisites: Rust and Cargo
 ```bash
@@ -27,6 +28,8 @@ sudo apt install build-essential
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
+## Building Hermes
+
 For preparation, we will create a dedicated user to run Hermes. Following command will also create home directory for the new user.
 
 ```bash
@@ -34,12 +37,13 @@ sudo useradd -m -d /srv/hermes hermes
 sudo sudo -u hermes -s
 ```
 
-Now is time install Hermes. Hermes is packaged in the ibc-relayer-cli Rust crate. To install the last release, run this command
+Now it's time to install Hermes. Hermes is packaged in the ibc-relayer-cli Rust crate. To install the last release, run this command
 
 ```bash
 cargo install ibc-relayer-cli --bin hermes --locked
 ```
-This will download and build the crate ibc-relayer-cli, and install the hermes binary in /srv/hermes/.cargo/bin/hermes
+
+This will download and build the crate ibc-relayer-cli, and install the hermes binary in /srv/hermes/.cargo/bin/hermes and update the PATH
 
 You can check the hermes version:
 
@@ -51,27 +55,28 @@ hermes 1.3.0
 ## Configuring Hermes with auto-config
 
 {% hint style="info" %}
-Thanks to the new functionalities of auto-configuration implemented through chain-registry, we start setting up the config file for the wallets.
+Thanks to the new functionality of auto-configuration implemented through chain-registry, the initial setup will be a lot easyer than with older releases.
 {% endhint %}
 
 As first step, we create the .hermes folder, where we would save the config.toml file of hermes configuration, useful in future steps for manual tweaking (like changing RPC and gRPC nodes).
 
 ```bash
-mkdir .hermes
+mkdir $HOME/.hermes
 ```
 
-Then, we rely on the auto-config of hermes to create the config.toml file. Auto-config will create for us the standard hermes configuration, the chain specific configuration and the channel configuration, all taken from chain-registry (https://github.com/cosmos/chain-registry).
+Then, we rely on the auto-config of hermes to create the config.toml file. Auto-config will create for us the standard hermes configuration, the chains specific configurations and the channels configurations, all taken from chain-registry (https://github.com/cosmos/chain-registry).
 
-Let's consider that we want to create a JUNO<->OSMOSIS relayer. With 2 chains we can use this command:
+As stated on the beginning, we want to create a Juno<->Osmosis relayer. With 2 chains we can use this command:
 
 ```bash
 hermes config auto --output $HOME/.hermes/config.toml --chains juno:juno-relayer --chains osmosis:osmo-relayer
 ```
-With more chains, just append to the command other ```--chains chain:wallet-name``` parameters.
 
-With that configuration you are going to configure Hermes for JUNO (that in chain-registry will be resolved in juno-1) with a wallet called juno-relayer (not imported yet, this is only a label that must be the same of the future imported wallet), and with OSMOSIS (osmosis-1) you are using a wallet called osmo-relayer.
+With more chains, just append to the command others ```--chains chain:wallet-name``` parameters.
 
-Doing so the hermes binary will populate for us the $HOME/.hermes/config.toml file with something like this:
+With that command you had configured Hermes for Juno (that in chain-registry will be resolved in juno-1) with a wallet called juno-relayer (not imported yet, this is only a label that must be the same of the future imported wallet), and with Osmosis (osmosis-1) with a wallet called osmo-relayer.
+
+Doing so the hermes binary will populate for us the $HOME/.hermes/config.toml file with something like this (at the time of writing):
 
 ```bash
 [global]
@@ -195,17 +200,17 @@ list = [
 derivation = 'cosmos'
 ```
 
-As you can see, it has retrieved the chains configuration, and it has populated also the channels between these 2 chains.
+As you can see, hermes had retrieve the chains configurations, and it has populated also the channels between these 2 chains.
 
 {% hint style="warning" %}
-Every time you run the ```hermes config auto``` command it will WIPE the config file in input and rewrite it with chain-registry data. This mean that you will lose any changes, like REST or Telemetry non standard configuration, RPCs and gRPCs configuration (if you are using your own or trust some specific public RPCs/gRPCs) and every other parameter changed on the chains.
+BEWARE: Every time you run the ```hermes config auto``` command it will WIPE the config file in input and rewrite it with chain-registry data. This mean that you will lose any changes, like REST or Telemetry non standard configuration, RPCs and gRPCs configuration (if you are using your owns or trust some specific public RPCs/gRPCs) and every other parameter changed on the chains.
 The positive things is that it will update also the channels configuration, so if there had been channels changing, you will get the new active channels (if someone had updated chain-registry).
-Apart of the initial config, use it carefully 
+Except for the initial config, where you have nothing to wipe, use it carefully. 
 {% endhint %}
 
 ## Setting up wallets
 
-We setup the wallets by creating key configuration files that are imported to hermes. Here we go trhough Juno key setting, other chains are similar.
+We setup the wallets by creating key configuration files that will be imported to hermes. Here we go through Juno key setting, other chains are similar.
 
 ```bash
 {
@@ -217,7 +222,7 @@ We setup the wallets by creating key configuration files that are imported to he
 }
 ```
 
-You can manually retrieve the values once the wallet had been created (and token received for public key to be visible in explorers), or if you have your CLI configured for the relative chain, you can use (for eaxmple with juno):
+You can manually populate the values once the wallet had been created from Keplr for example (and token received for public key to be visible in explorers), or if you have your own CLI configured for the relative chain, you can use (for example with juno):
 
 ```bash
 junod keys add <key_name> --output json
@@ -285,7 +290,8 @@ Create the following configuration to **/etc/systemd/system/hermes.service**
 [Unit]
 Description=Hermes IBC relayer
 ConditionPathExists=/srv/hermes/hermes
-After=network.target juno.service cosmos.service osmo.service
+#enable the line below if you are using LOCAL nodes
+#After=network.target juno.service cosmos.service osmo.service
 
 [Service]
 Type=simple
@@ -299,7 +305,7 @@ RestartSec=2
 WantedBy=multi-user.target
 ```
 
-Then we well start hermes with the newly created service and enable it. Note that this step is done from your normal user account that has sudo privileges, so no longer as hermes.
+Then we will start hermes with the newly created service and enable it. Note that this step is done from your normal user account that has sudo privileges, so no longer as hermes.
 
 ```bash
 sudo systemctl start hermes.service
