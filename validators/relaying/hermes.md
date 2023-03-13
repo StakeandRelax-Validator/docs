@@ -10,13 +10,7 @@ coverY: 0
 
 ## Assumptions
 
-We assume that you already have access to Juno, Osmosis and Cosmos nodes. These can be either local nodes, or you can access them over the network. However, for networked version, you will need to adjust the systemd configuration not to depend on the chains that are run on other servers. And naturally the hermes configuration needs to adjust the addressing of each chain as well.
-
-The given example has all relayed chains run locally, Juno is on standard ports, other chains are configured as follows:
-
-* Osmosis: 36657 and 39090
-* Cosmos: 46657 and 49090
-* Sifchain: 56657 and 59090
+We assume that you already have access to Juno, Osmosis nodes. These can be either local nodes, or you can access them over the network. However, for networked version, you will need to adjust the systemd configuration not to depend on the chains that are run on other servers. And naturally the hermes configuration needs to adjust the addressing of each chain as well.
 
 In these instructions, Hermes is installed under /srv/hermes, adjust the paths according to your setup.
 
@@ -71,30 +65,145 @@ Then, we rely on the auto-config of hermes to create the config.toml file. Auto-
 Let's consider that we want to create a JUNO<->OSMOSIS relayer. With 2 chains we can use this command:
 
 ```bash
- hermes config auto --output .hermes/config.toml --chains juno:juno-relayer --chains osmosis:osmo-relayer
+hermes config auto --output $HOME/.hermes/config.toml --chains juno:juno-relayer --chains osmosis:osmo-relayer
+```
+With more chains, just append to the command other ```--chains chain:wallet-name``` parameters.
+
+With that configuration you are going to configure Hermes for JUNO (that in chain-registry will be resolved in juno-1) with a wallet called juno-relayer (not imported yet, this is only a label that must be the same of the future imported wallet), and with OSMOSIS (osmosis-1) you are using a wallet called osmo-relayer.
+
+Doing so the hermes binary will populate for us the $HOME/.hermes/config.toml file with something like this:
+
+```bash
+[global]
+log_level = 'info'
+[mode.clients]
+enabled = true
+refresh = true
+misbehaviour = false
+
+[mode.connections]
+enabled = false
+
+[mode.channels]
+enabled = false
+
+[mode.packets]
+enabled = true
+clear_interval = 100
+clear_on_start = true
+tx_confirmation = false
+auto_register_counterparty_payee = false
+
+[rest]
+enabled = false
+host = '127.0.0.1'
+port = 3000
+
+[telemetry]
+enabled = false
+host = '127.0.0.1'
+port = 3001
+
+[[chains]]
+id = 'juno-1'
+type = 'CosmosSdk'
+rpc_addr = 'https://rpc-juno-ia.cosmosia.notional.ventures/'
+websocket_addr = 'wss://rpc-juno-ia.cosmosia.notional.ventures/websocket'
+grpc_addr = 'https://grpc-juno-ia.cosmosia.notional.ventures/'
+rpc_timeout = '10s'
+account_prefix = 'juno'
+key_name = 'juno-relayer'
+key_store_type = 'Test'
+store_prefix = 'ibc'
+default_gas = 100000
+max_gas = 400000
+gas_multiplier = 1.1
+max_msg_num = 30
+max_tx_size = 180000
+clock_drift = '5s'
+max_block_time = '30s'
+memo_prefix = ''
+sequential_batch_tx = false
+
+[chains.trust_threshold]
+numerator = '1'
+denominator = '3'
+
+[chains.gas_price]
+price = 0.1
+denom = 'ujuno'
+
+[chains.packet_filter]
+policy = 'allow'
+list = [
+    [
+    'transfer',
+    'channel-0',
+],
+    [
+    'wasm.juno1v4887y83d6g28puzvt8cl0f3cdhd3y6y9mpysnsp3k8krdm7l6jqgm0rkn',
+    'channel-47',
+],
+]
+
+[chains.address_type]
+derivation = 'cosmos'
+
+[[chains]]
+id = 'osmosis-1'
+type = 'CosmosSdk'
+rpc_addr = 'https://rpc-osmosis-ia.cosmosia.notional.ventures/'
+websocket_addr = 'wss://rpc-osmosis-ia.cosmosia.notional.ventures/websocket'
+grpc_addr = 'https://grpc-osmosis-ia.cosmosia.notional.ventures/'
+rpc_timeout = '10s'
+account_prefix = 'osmo'
+key_name = 'osmo-relayer'
+key_store_type = 'Test'
+store_prefix = 'ibc'
+default_gas = 100000
+max_gas = 400000
+gas_multiplier = 1.1
+max_msg_num = 30
+max_tx_size = 180000
+clock_drift = '5s'
+max_block_time = '30s'
+memo_prefix = ''
+sequential_batch_tx = false
+
+[chains.trust_threshold]
+numerator = '1'
+denominator = '3'
+
+[chains.gas_price]
+price = 0.1
+denom = 'uosmo'
+
+[chains.packet_filter]
+policy = 'allow'
+list = [
+    [
+    'transfer',
+    'channel-42',
+],
+    [
+    'transfer',
+    'channel-169',
+],
+]
+
+[chains.address_type]
+derivation = 'cosmos'
 ```
 
-With that configuration you are going to tell Hermes that for chain JUNO (that in chain-registry will be resolved in juno-1) you are using a wallet called juno-relayer (not imported yet), and with OSMOSIS (osmosis-1) you are using a wallet called osmo-relayer.
+As you can see, it has retrieved the chains configuration, and it has populated also the channels between these 2 chains.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+{% hint style="warning" %}
+Every time you run the ```hermes config auto``` command it will WIPE the config file in input and rewrite it with chain-registry data. This mean that you will lose any changes, like REST or Telemetry non standard configuration, RPCs and gRPCs configuration (if you are using your own or trust some specific public RPCs/gRPCs) and every other parameter changed on the chains.
+The positive things is that it will update also the channels configuration, so if there had been channels changing, you will get the new active channels (if someone had updated chain-registry).
+Apart of the initial config, use it carefully 
+{% endhint %}
 
 ## Setting up wallets
-
 
 We setup the wallets by creating key configuration files that are imported to hermes. Here we go trhough Juno key setting, other chains are similar.
 
@@ -108,147 +217,19 @@ We setup the wallets by creating key configuration files that are imported to he
 }
 ```
 
-
-## Configuring Hermes
-
-Choose your favourite editor and edit the following configuration template to mach your setup. There are features like telemetry and rest API that you can enable, but they are not necessary, so they are left out from this tutorial.
-
-```
-[global]
-strategy = 'packets'
-filter = true
-log_level = 'info'
-clear_packets_interval = 100
-
-#
-# Chain configuration Juno
-#
-
-[[chains]]
-id = 'juno-1'
-rpc_addr = 'http://127.0.0.1:26657'
-grpc_addr = 'http://127.0.0.1:29090'
-websocket_addr = 'ws://127.0.0.1:26657/websocket'
-
-rpc_timeout = '20s'
-account_prefix = 'juno'
-key_name = 'juno-relayer'
-store_prefix = 'ibc'
-max_msg_num=15
-max_gas = 1000000
-gas_price = { price = 0.001, denom = 'ujuno' }
-clock_drift = '5s'
-trusting_period = '14days'
-trust_threshold = { numerator = '1', denominator = '3'}
-
-[chains.packet_filter]
-policy = 'allow'
-list = [
-  ['transfer', 'channel-0'],
-  ['transfer', 'channel-1'],
-  ['transfer', 'channel-5'],
-]
-
-
-#
-# Chain configureation Osmosis
-#
-
-[[chains]]
-id = 'osmosis-1'
-
-# API access to Osmosis node with indexing
-rpc_addr = 'http://127.0.0.1:36657'
-grpc_addr = 'http://127.0.0.1:39090'
-websocket_addr = 'ws://127.0.0.1:36657/websocket'
-
-rpc_timeout = '20s'
-account_prefix = 'osmo'
-key_name = 'osmo-relayer'
-store_prefix = 'ibc'
-max_gas =  1000000
-gas_price = { price = 0.000, denom = 'uosmo' }
-clock_drift = '5s'
-trusting_period = '7days'
-trust_threshold = { numerator = '1', denominator = '3' }
-
-[chains.packet_filter]
-policy = 'allow'
-list = [
-  ['transfer', 'channel-42'],
-]
-
-#
-# Chain configuration Cosmos
-#
-
-[[chains]]
-id = 'cosmoshub-4'
-
-# API access to Cosmos node with indexing
-rpc_addr = 'http://127.0.0.1:46657'
-grpc_addr = 'http://127.0.0.1:49090'
-websocket_addr = 'ws://127.0.0.1:46657/websocket'
-
-rpc_timeout = '20s'
-account_prefix = 'cosmos'
-key_name = 'cosmos-relayer'
-store_prefix = 'ibc'
-max_msg_num=15
-max_gas = 1000000
-gas_price = { price = 0.0001, denom = 'uatom' }
-clock_drift = '5s'
-trusting_period = '14days'
-trust_threshold = { numerator = '1', denominator = '3' }
-
-[chains.packet_filter]
-policy = 'allow'
-list = [
-  ['transfer', 'channel-207'],
-]
-
-#
-# Chain configuration Sifchain
-#
-
-[[chains]]
-id = 'sifchain-1'
-
-# API access to Cosmos node with indexing
-rpc_addr = 'http://127.0.0.1:56657'
-grpc_addr = 'http://127.0.0.1:59090'
-websocket_addr = 'ws://127.0.0.1:56657/websocket'
-
-rpc_timeout = '20s'
-account_prefix = 'sif'
-key_name = 'sif-relayer'
-store_prefix = 'ibc'
-max_msg_num=15
-max_gas = 10000000
-gas_price = { price = 0.001, denom = 'rowan' }
-clock_drift = '5s'
-trusting_period = '14days'
-trust_threshold = { numerator = '1', denominator = '3' }
-
-[chains.packet_filter]
-policy = 'allow'
-list = [
-  ['transfer', 'channel-14'],
-]
-```
-
-You can validate the configuration with following:
+You can manually retrieve the values once the wallet had been created (and token received for public key to be visible in explorers), or if you have your CLI configured for the relative chain, you can use (for eaxmple with juno):
 
 ```bash
-hermes@Demo:~$ bin/hermes -c .hermes/config.toml  config validate
-Success: "validation passed successfully"
+junod keys add <key_name> --output json
 ```
 
-Next we will import this key configuration to hermes and shred the used json file. (Using chain\_id **juno-1**.)
+and this will output the needed json file.
+
+Assuming that you have saved the juno-relayer wallet information in juno.json file, you can run this command to add it to hermes and then delete it
 
 ```bash
-bin/hermes keys add juno-1 -f ./seed-juno.json
-shred -u ./seed-juno.json
+hermes keys add --key-name juno-relayer --chain juno-1 --key-file ./juno.json
+shred -u ./juno.json
 ```
 
 If you want to make sure the keys got imported, you can check them with following command (smart thing to run it before shredding the json file):
@@ -257,12 +238,39 @@ If you want to make sure the keys got imported, you can check them with followin
 bin/hermes keys list juno-1
 ```
 
+You must import a wallet for every chain you relay.
+
+## Validate the config
+
+You can validate the configuration with following:
+
+```bash
+hermes -c $HOME/.hermes/config.toml  config validate
+Success: "validation passed successfully"
+```
+
+Then you can also run a health-check
+
+```bash
+hermes health-check
+
+INFO ThreadId(01) using default configuration from '/srv/hermes/.hermes/config.toml'
+INFO ThreadId(01) running Hermes v1.3.0
+INFO ThreadId(01) health_check{chain=juno-1}: performing health check...
+WARN ThreadId(05) health_check{chain=juno-1}: Chain 'juno-1' has no minimum gas price value configured for denomination 'ujuno'. This is usually a sign of misconfiguration, please check your config.toml
+INFO ThreadId(01) health_check{chain=juno-1}: chain is healthy
+INFO ThreadId(01) health_check{chain=osmosis-1}: performing health check...
+WARN ThreadId(11) health_check{chain=osmosis-1}: Chain 'osmosis-1' has no minimum gas price value configured for denomination 'uosmo'. This is usually a sign of misconfiguration, please check your config.toml
+INFO ThreadId(01) health_check{chain=osmosis-1}: chain is healthy
+SUCCESS performed health check for all chains in the config
+```
+
 ## Testing the setup
 
 Let's do a quick test to see things work properly.
 
 ```bash
-bin/hermes start
+hermes start
 ```
 
 Once we see things load up correctly and there are no fatal errors, we can break out of hermes with **ctrl-c**.
@@ -283,7 +291,7 @@ After=network.target juno.service cosmos.service osmo.service
 Type=simple
 User=hermes
 WorkingDirectory=/srv/hermes
-ExecStart=/srv/hermes/hermes start
+ExecStart=$(which hermes) start
 Restart=always
 RestartSec=2
 
