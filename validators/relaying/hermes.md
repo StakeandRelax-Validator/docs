@@ -26,39 +26,88 @@ You will need **rust**, **build-essential** and **git** installed to follow thes
 
 ## Building Hermes
 
+Install Prerequisites: Rust and Cargo
+```bash
+sudo apt update
+sudo apt install build-essential
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
 For preparation, we will create a dedicated user to run Hermes. Following command will also create home directory for the new user.
 
-```
+```bash
 sudo useradd -m -d /srv/hermes hermes
-```
-
-We will next switch to the hermes user and create a directory where we will compile the relayer software.
-
-```
 sudo sudo -u hermes -s
-mkdir /srv/hermes/source
-mkdir /srv/hermes/bin
-cd /srv/hermes/source
 ```
 
-Now is time to clone the source repository and build it. Note that we need to checkout the latest release.
+Now is time install Hermes. Hermes is packaged in the ibc-relayer-cli Rust crate. To install the last release, run this command
 
+```bash
+cargo install ibc-relayer-cli --bin hermes --locked
 ```
-git clone https://github.com/informalsystems/ibc-rs.git hermes
-cd hermes
-git checkout v0.7.2
-cargo build --release
-cp target/release/hermes ~/bin
-cd
+This will download and build the crate ibc-relayer-cli, and install the hermes binary in /srv/hermes/.cargo/bin/hermes
+
+You can check the hermes version:
+
+```bash
+hermes version
+hermes 1.3.0
 ```
 
-Next we will check that the newly built hermes version is the correct one:
+## Configuring Hermes with auto-config
 
+{% hint style="info" %}
+Thanks to the new functionalities of auto-configuration implemented through chain-registry, we start setting up the config file for the wallets.
+{% endhint %}
+
+As first step, we create the .hermes folder, where we would save the config.toml file of hermes configuration, useful in future steps for manual tweaking (like changing RPC and gRPC nodes).
+
+```bash
+mkdir .hermes
 ```
-hermes@demo:~$ bin/hermes version
-Oct 04 15:52:48.299  INFO ThreadId(01) using default configuration from '/srv/hermes/.hermes/config.toml'
-hermes 0.7.2
+
+Then, we rely on the auto-config of hermes to create the config.toml file. Auto-config will create for us the standard hermes configuration, the chain specific configuration and the channel configuration, all taken from chain-registry (https://github.com/cosmos/chain-registry).
+
+Let's consider that we want to create a JUNO<->OSMOSIS relayer. With 2 chains we can use this command:
+
+```bash
+ hermes config auto --output .hermes/config.toml --chains juno:juno-relayer --chains osmosis:osmo-relayer
 ```
+
+With that configuration you are going to tell Hermes that for chain JUNO (that in chain-registry will be resolved in juno-1) you are using a wallet called juno-relayer (not imported yet), and with OSMOSIS (osmosis-1) you are using a wallet called osmo-relayer.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Setting up wallets
+
+
+We setup the wallets by creating key configuration files that are imported to hermes. Here we go trhough Juno key setting, other chains are similar.
+
+```bash
+{
+  "name":"juno-relayer",
+  "type":"local",
+  "address":"junoxxx",
+  "pubkey":"{\"@type\":\"/cosmos.crypto.secp256k1.PubKey\",\"key\":\"xxx\"}",
+  "mnemonic": "24 words seed"
+}
+```
+
 
 ## Configuring Hermes
 
@@ -190,35 +239,21 @@ list = [
 
 You can validate the configuration with following:
 
-```
+```bash
 hermes@Demo:~$ bin/hermes -c .hermes/config.toml  config validate
 Success: "validation passed successfully"
 ```
 
-## Setting up wallets
-
-We do this by creating key configuration files that are imported to hermes. Here we go trhough Juno key setting, other chains are similar.
-
-```
-{
-  "name":"juno-relayer",
-  "type":"local",
-  "address":"junoxxx",
-  "pubkey":"{\"@type\":\"/cosmos.crypto.secp256k1.PubKey\",\"key\":\"xxx\"}",
-  "mnemonic": "24 words seed"
-}
-```
-
 Next we will import this key configuration to hermes and shred the used json file. (Using chain\_id **juno-1**.)
 
-```
+```bash
 bin/hermes keys add juno-1 -f ./seed-juno.json
 shred -u ./seed-juno.json
 ```
 
 If you want to make sure the keys got imported, you can check them with following command (smart thing to run it before shredding the json file):
 
-```
+```bash
 bin/hermes keys list juno-1
 ```
 
@@ -226,7 +261,7 @@ bin/hermes keys list juno-1
 
 Let's do a quick test to see things work properly.
 
-```
+```bash
 bin/hermes start
 ```
 
@@ -258,7 +293,7 @@ WantedBy=multi-user.target
 
 Then we well start hermes with the newly created service and enable it. Note that this step is done from your normal user account that has sudo privileges, so no longer as hermes.
 
-```
+```bash
 sudo systemctl start hermes.service
 sudo systemctl enable hermes.service
 ```
