@@ -1,5 +1,5 @@
 ---
-description: Instructions for setting up the rust based relayer, Hermes
+Description: Instructions for setting up the rust based relayer, Hermes
 cover: >-
   ../../.gitbook/assets/Gitbook Banner large 6 (1) (1) (1) (1) (1) (1) (1) (1)
   (1) (1) (1) (9).png
@@ -10,14 +10,19 @@ coverY: 0
 
 ## Assumptions
 
-This guide is and example of configuration for Juno<->Osmosis relaying.
-We assume that you already have access to Juno and Osmosis nodes. These can be either local nodes, or you can access them over the network. However, for networked version, you will need to adjust the systemd configuration not to depend on the chains that are run on other servers. And naturally the hermes configuration needs to adjust the addressing of each chain as well.
+This guide provides an example configuration for relaying between Juno and Osmosis nodes. We assume that you already have access to both Juno and Osmosis nodes, which can be local or accessible over the network.
 
-In these instructions, Hermes is installed under /srv/hermes, adjust the paths according to your setup.
+For networked nodes, it's important to adjust the systemd configuration to ensure that it does not depend on chains that are run on other servers. Additionally, the hermes configuration needs to be adjusted to reflect the correct addressing of each chain.
 
-These instructions are based on installation on Ubuntu 20.04 LTS, but should work the same on Ubuntu 22.04 or recent Debian.
+By following this guide, you will be able to set up a reliable and efficient relaying system between Juno and Osmosis nodes, enabling seamless communication and data exchange between the two networks.
 
-You will need **rust**, **build-essential** and **git** installed to follow these instructions.
+We recommend that you review the guide carefully and make any necessary adjustments to ensure that the configuration is optimized for your specific needs. If you encounter any issues or have questions, please don't hesitate to reach out to the Juno or Osmosis communities for assistance.
+
+Please note that in these instructions, Hermes is installed under the directory /srv/hermes. Be sure to adjust the paths according to your specific setup.
+
+These instructions are specifically tailored for installation on Ubuntu 20.04 LTS, but should be applicable to other recent Debian-based operating systems, including Ubuntu 22.04.
+
+To follow these instructions, you will need to have rust, build-essential, and git installed on your system. If you don't already have these packages installed, please install them before proceeding with the installation of Hermes.
 
 ## Prerequisites
 
@@ -30,7 +35,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ## Building Hermes
 
-For preparation, we will create a dedicated user to run Hermes. Following command will also create home directory for the new user.
+For preparation, we will create a dedicated user to run Hermes. The following command will also create home directory for the new user.
 
 ```bash
 sudo useradd -m -d /srv/hermes hermes
@@ -55,28 +60,28 @@ hermes 1.3.0
 ## Configuring Hermes with auto-config
 
 {% hint style="info" %}
-Thanks to the new functionality of auto-configuration implemented through chain-registry, the initial setup will be a lot easyer than with older releases.
+Thanks to the new functionality of auto-configuration implemented through chain-registry, the initial setup will be a lot easier than it was with older releases.
 {% endhint %}
 
-As first step, we create the .hermes folder, where we would save the config.toml file of hermes configuration, useful in future steps for manual tweaking (like changing RPC and gRPC nodes).
+As a first step, we create the .hermes folder, where we will save the config.toml file for the Hermes configuration. This will be useful in future steps for manual tweaking, such as changing RPC and gRPC nodes.
 
 ```bash
 mkdir $HOME/.hermes
 ```
 
-Then, we rely on the auto-config of hermes to create the config.toml file. Auto-config will create for us the standard hermes configuration, the chains specific configurations and the channels configurations, all taken from chain-registry (https://github.com/cosmos/chain-registry).
+Next, we rely on the auto-config of Hermes to create the config.toml file. Auto-config will then create the standard hermes configuration, the chains specific configurations and the channels configurations,will be automatically taken from chain-registry (https://github.com/cosmos/chain-registry).
 
-As stated on the beginning, we want to create a Juno<->Osmosis relayer. With 2 chains we can use this command:
+As stated at the beginning, our goal is to create a Juno<->Osmosis relayer. To accomplish this with two chains, we can use the following command:
 
 ```bash
 hermes config auto --output $HOME/.hermes/config.toml --chains juno:juno-relayer --chains osmosis:osmo-relayer
 ```
 
-With more chains, just append to the command others ```--chains chain:wallet-name``` parameters.
+If you have more chains, simply append the command  ```--chains chain:wallet-name``` to the other parameters.
 
-With that command you had configured Hermes for Juno (that in chain-registry will be resolved in juno-1) with a wallet called juno-relayer (not imported yet, this is only a label that must be the same of the future imported wallet), and with Osmosis (osmosis-1) with a wallet called osmo-relayer.
+With that command, you have configured Hermes for Juno (which is resolved as juno-1 in the chain-registry) with a wallet called juno-relayer (which has not been imported yet; this is only a label that must match the name of the future imported wallet). You have also configured Osmosis (osmosis-1) with a wallet called osmo-relayer. 
 
-Doing so the hermes binary will populate for us the $HOME/.hermes/config.toml file with something like this (at the time of writing):
+As a result, the Hermes binary will populate the $HOME/.hermes/config.toml file with something like this (at the time of writing):
 
 ```bash
 [global]
@@ -200,17 +205,17 @@ list = [
 derivation = 'cosmos'
 ```
 
-As you can see, hermes retrieved the chains configurations, and it has populated also the channels between these 2 chains.
+As you can see, Hermes has retrieved the chain configurations and populated the channels between these two chains.
 
 {% hint style="warning" %}
-BEWARE: Every time you run the ```hermes config auto``` command it will WIPE the config file in input and rewrite it with chain-registry data. This mean that you will lose any changes, like REST or Telemetry non standard configuration, RPCs and gRPCs configuration (if you are using your owns or trust some specific public RPCs/gRPCs) and every other parameter changed on the chains.
-The positive things is that it will update also the channels configuration, so if there had been channels changing, you will get the new active channels (if someone had updated chain-registry).
-Except for the initial config, where you have nothing to wipe, use it carefully. 
+BEWARE: Every time you run the ```hermes config auto``` command it will WIPE the config file in input and rewrite it with chain-registry data. This means that you will lose any changes, like REST or Telemetry non standard configuration, RPCs and gRPCs configuration (if you are using your owns or trust some specific public RPCs/gRPCs) and every other parameter changed on the chains.
+The positive thing is that it will also update the channels configuration. Therefore, if there have been any changes to the channels, you will get the new active channels (assuming that someone has updated the chain-registry). 
+However, except for the initial configuration where you have nothing to wipe, use it carefully.
 {% endhint %}
 
 ## Setting up wallets
 
-We setup the wallets by creating key configuration files that will be imported to hermes. Here we go through Juno key setting, other chains are similar.
+We setup the wallets by creating key configuration files that will be imported to Hermes. Here, we will go through the process of setting up Juno keys. The process for setting up keys for other chains is similar.
 
 ```bash
 {
@@ -222,26 +227,26 @@ We setup the wallets by creating key configuration files that will be imported t
 }
 ```
 
-You can manually populate the values once the wallet had been created from Keplr for example (and token received for public key to be visible in explorers). 
+You can manually populate the values after creating the wallet using Keplr, for example, and after receiving tokens for the public key to become visible in explorers.
 If you have your own CLI configured for the relative chain, you can use this command to have the json output you need (for example with juno):
 
 ```bash
 junod keys add juno-relayer --output json
 ```
 
-Assuming that you have saved the juno-relayer wallet information in juno.json file, you can run this command to add it to hermes
+Assuming that you have saved the juno-relayer wallet information in juno.json file, you can run this command to add it to Hermes:
 
 ```bash
 hermes keys add --key-name juno-relayer --chain juno-1 --key-file ./juno.json
 ```
 
-If you want to make sure the keys got imported, you can check them with following command
+If you want to make sure the keys got imported, you can check them with following command:
 
 ```bash
 bin/hermes keys list juno-1
 ```
 
-If all is fine then shred it
+If all is fine then shred it:
 
 ```bash
 shred -u ./juno.json
@@ -251,14 +256,14 @@ You must import a wallet for every chain you relay.
 
 ## Validate the config
 
-You can validate the configuration with following:
+You can validate the configuration with the following command:
 
 ```bash
 hermes -c $HOME/.hermes/config.toml  config validate
 Success: "validation passed successfully"
 ```
 
-Then you can also run a health-check
+Then you can also run a health-check:
 
 ```bash
 hermes health-check
@@ -276,17 +281,17 @@ SUCCESS performed health check for all chains in the config
 
 ## Testing the setup
 
-Let's do a quick test to see things work properly.
+Let's do a quick test to see if things work properly.
 
 ```bash
 hermes start
 ```
 
-Once we see things load up correctly and there are no fatal errors, we can break out of hermes with **ctrl-c**.
+Once we see things load up correctly and there are no fatal errors, we can break out of Hermes with **ctrl-c**.
 
 ## Configuring systemd
 
-Now we will setup hermes to be run by systemd, and to start automatically on reboots.
+Now we will setup Hermes to be run by systemd, and to start automatically on reboots.
 
 Create the following configuration to **/etc/systemd/system/hermes.service**
 
@@ -309,7 +314,7 @@ RestartSec=2
 WantedBy=multi-user.target
 ```
 
-Then we will start hermes with the newly created service and enable it. Note that this step is done from your normal user account that has sudo privileges, so no longer as hermes.
+Then we will start Hermes with the newly created service and enable it. Note that this step is done from your normal user account that has sudo privileges, so no longer as Hermes.
 
 ```bash
 sudo systemctl start hermes.service
